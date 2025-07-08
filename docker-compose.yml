@@ -1,0 +1,35 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  mysql-db:
+    image: mysql:8.0 # Use uma versão específica do MySQL
+    command: --default-authentication-plugin=mysql_native_password # Pode ser necessário para algumas versões
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: admin # A senha que você configurou no application.properties
+      MYSQL_DATABASE: passworddb # O banco de dados que sua aplicação vai usar
+    ports:
+      - "3309:3306" # Mapeia a porta 3309 do host para a 3306 do contêiner MySQL
+    volumes:
+      - mysql-data:/var/lib/mysql # Persiste os dados do MySQL
+    healthcheck: # Garante que o MySQL esteja pronto antes do Spring Boot iniciar
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      timeout: 20s
+      retries: 10
+
+  passwordapi-app:
+    build: . # Constrói a imagem a partir do Dockerfile no diretório atual
+    ports:
+      - "8080:8080"
+    environment:
+      # Sobrescreve a URL do banco de dados para apontar para o serviço MySQL no Docker Compose
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/passworddb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: admin
+    depends_on:
+      mysql-db:
+        condition: service_healthy # Garante que o MySQL esteja saudável antes de iniciar a API
+
+volumes:
+  mysql-data:
