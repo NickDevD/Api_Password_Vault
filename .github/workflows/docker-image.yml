@@ -7,12 +7,32 @@ on:
     branches: [ "main" ]
 
 jobs:
-
   build:
-
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # O ambiente de execução do seu workflow
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
+    - uses: actions/checkout@v4 # 1. Faz o checkout do seu código do repositório
+    
+    - name: Set up JDK 17 # 2. Configura o ambiente Java Development Kit (JDK)
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17' # Importante: Use a versão do Java que seu projeto Spring Boot usa
+        distribution: 'temurin' # Uma distribuição comum do JDK
+        cache: 'maven' # Opcional: Ajuda a acelerar builds futuros cacheadando dependências Maven
+
+    - name: Build with Maven # 3. Compila o projeto Maven e gera o arquivo .jar
+      run: mvn clean install -DskipTests # Este comando limpa, compila e empacota sua aplicação
+                                       # "-DskipTests" é opcional, pula os testes para um build mais rápido no CI
+
+    - name: Build the Docker image # 4. Constrói a imagem Docker (agora o JAR já existe na pasta target/)
       run: docker build . --file Dockerfile --tag api-password-vault:$(date +%s)
+
+    # Opcional: Se você quiser fazer login no Docker Hub e fazer push da imagem
+    # - name: Login to Docker Hub
+    #   uses: docker/login-action@v3
+    #   with:
+    #     username: ${{ secrets.DOCKER_USERNAME }} # Variáveis de ambiente seguras do GitHub Secrets
+    #     password: ${{ secrets.DOCKER_TOKEN }}
+
+    # - name: Push Docker image
+    #   run: docker push api-password-vault:$(date +%s) # Ajuste a tag de acordo com o que você fez no build
